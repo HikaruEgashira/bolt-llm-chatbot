@@ -1,19 +1,22 @@
-import { OpenAI } from 'langchain/llms/openai'
-import { ConversationChain } from 'langchain/chains'
+import { ChatOpenAI } from '@langchain/openai'
+import { HumanMessage, AIMessage } from '@langchain/core/messages'
 
 class LangchainService {
-  private llm: OpenAI
-  private chain: ConversationChain
+  private llm: ChatOpenAI
+  private history: (HumanMessage | AIMessage)[] = []
 
   constructor() {
-    this.llm = new OpenAI({ openAIApiKey: import.meta.env.VITE_OPENAI_API_KEY })
-    this.chain = new ConversationChain({ llm: this.llm })
+    this.llm = new ChatOpenAI({
+      openAIApiKey: import.meta.env.VITE_OPENAI_API_KEY,
+    })
   }
 
   async getResponse(input: string): Promise<string> {
     try {
-      const response = await this.chain.call({ input })
-      return response.response
+      this.history.push(new HumanMessage(input))
+      const response = await this.llm.invoke(this.history)
+      this.history.push(response)
+      return typeof response.content === 'string' ? response.content : JSON.stringify(response.content)
     } catch (error) {
       console.error('Error in LangchainService:', error)
       throw new Error('Failed to get response from LLM')
